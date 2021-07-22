@@ -78,7 +78,7 @@ func main() {
 	if len(flag.Args()) != 1 {
 		panic("args length must be 1")
 	}
-	fp, err := newTailReader("/tmp/sample.log")
+	fp, err := newTailReader(flag.Arg(0))
 	if err != nil {
 		panic(err)
 	}
