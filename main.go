@@ -2,11 +2,13 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"flag"
 	"io"
 	"os"
 	"regexp"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // `tail -F` like reader
@@ -47,27 +49,48 @@ func removePrefix(message string) string {
 	return prefixPattern.ReplaceAllString(message, "")
 }
 
-type notifier interface {
-	notify(message string)
+type discordNotifier struct {
+	session *discordgo.Session
 }
 
-type stdNotifier struct {
+func newDiscordNotifier(token string) (discordNotifier, error) {
+	session, err := discordgo.New("Bot " + token)
+	if err != nil {
+		return discordNotifier{}, err
+	}
+	err = session.Open()
+	if err != nil {
+		return discordNotifier{}, err
+	}
+	return discordNotifier{session: session}, nil
 }
 
-func (sn stdNotifier) notify(message string) {
-	fmt.Println(message)
+func (dn discordNotifier) notify(message string) {
+	dn.session.ChannelMessageSend(os.Getenv("DISCORD_CHANNEL_ID"), message)
+}
+
+func (dn *discordNotifier) close() {
+	dn.session.Close()
 }
 
 func main() {
+	flag.Parse()
+	if len(flag.Args()) != 1 {
+		panic("args length must be 1")
+	}
 	fp, err := newTailReader("/tmp/sample.log")
 	if err != nil {
 		panic(err)
 	}
 	defer fp.Close()
-	mainNotifier := stdNotifier{}
+	notifier, err := newDiscordNotifier(os.Getenv("DISCORD_TOKEN"))
+	if err != nil {
+		panic(err)
+	}
+	defer notifier.close()
 
 	scanner := bufio.NewScanner(fp)
 	for scanner.Scan() {
-		mainNotifier.notify(removePrefix(scanner.Text()))
+		notifier.notify(removePrefix(scanner.Text()))
 	}
 }
