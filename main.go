@@ -78,18 +78,18 @@ func main() {
 	if len(flag.Args()) != 1 {
 		panic("args length must be 1")
 	}
-	fp, err := newTailReader(flag.Arg(0))
+	reader, err := newTailReader(flag.Arg(0))
 	if err != nil {
 		panic(err)
 	}
-	defer fp.Close()
+	defer reader.Close()
 	notifier, err := newDiscordNotifier(os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
 		panic(err)
 	}
 	defer notifier.close()
 
-	scanner := bufio.NewScanner(fp)
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		notifier.notify(removePrefix(scanner.Text()))
 	}
